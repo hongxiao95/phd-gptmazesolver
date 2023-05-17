@@ -15,20 +15,28 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = D
 
     # To create entrance of the map
     def create_entrance(grid):
+        # if the entrance was given
         if not entrance:
-            entrance_y = random.choice([0, length - 1])
-            entrance_x = random.randint(1, width - 2)
+            # decide on bottom-top or left-right side
+            b_t, l_r = 0, 1
+            if random.choice([b_t, l_r]) == b_t:
+                entrance_y = random.choice([0, length - 1])
+                entrance_x = random.randint(1, width - 2)
+            else:
+                entrance_y = random.randint(1, length - 2)
+                entrance_x = random.choice([0, width - 1])
         else:
             entrance_y, entrance_x = entrance
         
         grid[entrance_y][entrance_x] = entrance_mark
         return (entrance_y, entrance_x)
     
-    # judge whether the position is legal
+    # judge whether the position is legal, walking on the side way is not allowed
     def valid_move(y, x):
         return 0 < y < length - 1 and 0 < x < width - 1
 
     # create ways
+    # TODO: figure out how does nynx work
     def dfs(grid, y, x):
         grid[y][x] = path_way_mark
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
