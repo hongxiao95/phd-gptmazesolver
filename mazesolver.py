@@ -27,12 +27,14 @@ PRICING = {
     }
 }
 
-using_wall_mark = maze_generator.DEFAULT_WALL
-using_way_mark = maze_generator.DEFALUT_WAY
-using_ent_mark = maze_generator.DEFAULT_ENT
-using_exit_mark = maze_generator.DEFAULT_EXIT
+
 
 def main():
+    using_wall_mark = maze_generator.DEFAULT_WALL
+    using_way_mark = maze_generator.DEFALUT_WAY
+    using_ent_mark = maze_generator.DEFAULT_ENT
+    using_exit_mark = maze_generator.DEFAULT_EXIT
+    
     map_file_name = input("input map file name in [maps], leave blank and gen new map: ")
     ent, exit, maze = (0,0,0)
     using_prev_tip = True if input("Using Pre-Step-Tips to improve efficent?(y/n)").strip().lower() == "y" else False
@@ -59,7 +61,7 @@ def main():
         using_wall_mark, using_way_mark, using_ent_mark, using_exit_mark = legend
         if success == True:
             input("Reading Finished")
-            print(maze)
+            # print(maze)
         else:
             print(f"Reading Maze File Failed: {msg}")
             return
@@ -130,15 +132,15 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, use_sel
 
     use_natural_feedback = True
 
-    natural_closest_des = "I will tell you the closest 4 items at four directions."
+    natural_closest_des = "I will tell you the closest 4 items at 4 directions."
 
     formated_closest_des = "The wall is \"1\" and the legal pathway is \"0\", and I will tell you the closest 4 items in the order of \"up,left,down,right\" at the format of example \"1-0-0-1\", means the up side is wall, the left side is pathway, the right side is path way, and the right side is wall. you make the next step after get my information. for example, you say \"up\", I will take one step up and tell you the new closest 4 directions' items of \"0-1-0-1\". "
 
     start_prompt = f'''
-    Now I need you to be a explorer of a maze, try to find the pathway from the entrance  to the correct exit. The maze is a 2-D matrix, you're now on the entrance. you can only see one-step-far once. 
+    Now I need you to be a explorer of an maze, try to find the pathway from the entrance  to the correct exit. The maze is a 2-D matrix, you're now on the entrance. you can only see one-step-far once. 
     The exit is "{exit_mark}", for each step, you can go "up", "down", "left" or "right". after you told me your decision for this step, {natural_closest_des if use_natural_feedback else formated_closest_des}
-    At the next message, I will give you the begin situation of 4 closest items. And then ,you need to output the next step direction of "up, down, left, right" without any explanation, only one of the words of "up, down, left, right". when you see the "{exit_mark}" represents for the correct exit, step into it."  
-    Before you start the task, try to think and use a strategy, to find a effiency plan of doing it. If you found you get into a dead loop, try jump out it, don't loop the repeated path again and again.
+    At the next message, I will give you the begin situation of 4 closest items. And then ,you need to output the next step direction of "up, down, left, right" without any explanation, only one of the words of "up, down, left, right". when you see the "{exit_mark}" represents for the correct exit, step into it.
+    Before you start the task, try to think and use a strategy, to find a effiency plan of doing it, such as "right hand principle". If you found you get into a dead loop, try jump out it, don't loop the repeated path again and again. Never try work into a wall.
     '''
 
     messages = [
@@ -189,8 +191,10 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, use_sel
                     print(f"error while try self_fixing. Exception of {e}")
                     continue
                 instruction = fix_resp[0][PARAM_CONTENT].lower()
+                instruction = "".join([x if x.isalpha() else "" for x in instruction])
                 cost_dollar += fix_resp[1][1] + fix_resp[2][1]
                 this_time_token += fix_resp[1][0] + fix_resp[2][0]
+                print(f"Fixed command at {fixing_time} time: {instruction}")
 
         # after possible self_fixing, if still invalid, reasking for at most <MAX_ASKING_RETRY_TIME> times.
         if instruction not in valid_cmd:
@@ -208,7 +212,7 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, use_sel
             if bad_pos_retry > 5:
                 print("Too many retry")
                 break
-            print(f"BAD POS {instruction} Retry")
+            print(f"Bad instruction: {instruction} Retry")
             bad_pos_retry += 1
             continue
         else:
@@ -220,7 +224,7 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, use_sel
 
         maze_str = get_maze_str(maze, current_pos, history_indexes=history_path)
         os.system("clear")
-        print(instruction + (" Now Cost: $%.2f, this round_token: %d" %(cost_dollar, this_time_token)))
+        print(f"Move: {instruction}.\n" + (" Now Cost: $%.2f, this round_token: %d" %(cost_dollar, this_time_token)))
         print(maze_str)
 
         if maze[new_pos[0]][new_pos[1]] == exit_mark:

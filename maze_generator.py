@@ -35,7 +35,7 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = D
     def valid_move(y, x):
         return 0 < y < length - 1 and 0 < x < width - 1
 
-    # create ways
+    # create roads
     # TODO: figure out how does nynx work
     def dfs(grid, y, x):
         # make current position pathway at first
@@ -79,7 +79,7 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = D
         edge_cells = [((i, 0), (i, 1)) for i in range(1, length-1)] + [((i, width-1), (i, width-2)) for i in range(1, length-1)] + [((0, j), (1, j)) for j in range(1, width-1)] + [((length-1, j), (length-2, j)) for j in range(1, width-1)]
 
         # valid_exit_cells meets the consitions of: at the edge of the map; not the entrance; near-by in-map position is pathway
-        valid_exit_cells = [c for c in edge_cells if c != entrance and grid[c[1][0]][c[1][1]] == path_way_mark]
+        valid_exit_cells = [c for c in edge_cells if c[0] != entrance and grid[c[1][0]][c[1][1]] == path_way_mark]
         exit_cell, adj_cell = random.choice(valid_exit_cells)
         grid[exit_cell[0]][exit_cell[1]] = exit_mark
         return exit_cell
@@ -110,7 +110,7 @@ def write_maze_to_file(maze_matrix:list, file_name:str, wall:str=DEFAULT_WALL, w
         with open(file_name, "w") as maze_file:
             maze_file.write(f"Legend={wall}{way}{ent}{exit}\n")
             for line in maze_matrix:
-                file_name.write("".join(line) + "\n")
+                maze_file.write("".join(line) + "\n")
             return True
     except Exception as e:
         print(f"Writting maze file fail. Reason: {e}")
