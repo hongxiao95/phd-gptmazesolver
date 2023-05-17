@@ -1,11 +1,19 @@
 import random
 
-def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = "M", path_way_mark: str = " ", entrance_mark: str = "O", exit_mark: str = "Q", surrand: bool = False) -> tuple:
+DEFAULT_WALL = "█"
+DEFALUT_WAY = " "
+DEFAULT_ENT = "O"
+DEFAULT_EXIT = "X"
 
+# Function to generate maze
+def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = DEFAULT_WALL, path_way_mark: str = DEFALUT_WAY, entrance_mark: str = DEFAULT_ENT, exit_mark: str = DEFAULT_EXIT, surrand: bool = False) -> tuple:
+
+    # To create the background of the map, full of walls
     def create_grid():
         grid = [[wall_mark for j in range(width)] for i in range(length)]
         return grid
 
+    # To create entrance of the map
     def create_entrance(grid):
         if not entrance:
             entrance_y = random.choice([0, length - 1])
@@ -16,9 +24,11 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = "
         grid[entrance_y][entrance_x] = entrance_mark
         return (entrance_y, entrance_x)
     
+    # judge whether the position is legal
     def valid_move(y, x):
         return 0 < y < length - 1 and 0 < x < width - 1
 
+    # create ways
     def dfs(grid, y, x):
         grid[y][x] = path_way_mark
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -30,6 +40,7 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = "
                 grid[y + dy][x + dx] = path_way_mark
                 dfs(grid, ny, nx)
 
+    # generate part
     def generate_maze(grid, entrance):
         start_y, start_x = entrance
         if start_y == 0:
@@ -43,6 +54,7 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = "
         dfs(grid, start_y, start_x)
         return grid
     
+    # create exit at last
     def create_exit(grid, entrance):
         edge_cells = [((i, 0), (i, 1)) for i in range(1, length-1)] + [((i, width-1), (i, width-2)) for i in range(1, length-1)] + [((0, j), (1, j)) for j in range(1, width-1)] + [((length-1, j), (length-2, j)) for j in range(1, width-1)]
         valid_exit_cells = [c for c in edge_cells if c != entrance and grid[c[1][0]][c[1][1]] == path_way_mark]
