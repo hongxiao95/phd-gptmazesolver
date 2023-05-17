@@ -148,7 +148,7 @@ def get_maze_from_file(file_name:str) -> tuple:
 
         found_ent = False
         for y in range(len(maze)):
-            for x in range(len(y)):
+            for x in range(len(maze[y])):
                 if maze[y][x] == legend_list[2]:
                     ent = (y,x)
                     break
