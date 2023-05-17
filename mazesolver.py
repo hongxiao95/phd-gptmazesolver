@@ -1,13 +1,30 @@
 from maze_generator import gen_maze
 import openai
 import os
-import json
+import json, math
 
 
 DIR_UP = "up"
 DIR_DOWN = "down"
 DIR_LEFT = "left"
 DIR_RIGHT = "right"
+
+PARAM_PROMPT = "prompt"
+PARAM_COMP = "completion"
+
+MODEL_35_T = "gpt-3.5-turbo-0301"
+MODEL_4_8K = "gpt-4-0314"
+
+PRICING = {
+    MODEL_35_T:{
+        PARAM_PROMPT:0.002,
+        PARAM_COMP:0.002
+    },
+    MODEL_4_8K:{
+        PARAM_PROMPT:0.03,
+        PARAM_COMP:0.06
+    }
+}
 
 def main():
     exit_mark = "Q"
@@ -16,7 +33,7 @@ def main():
     ent, exit, maze = (0,0,0)
     using_prev_tip = True if input("Using Pre-Step-Tips to improve efficent?(y/n)").strip().lower() == "y" else False
     if map_file_name.strip() == "" or os.path.exists("maps" + os.path.sep + map_file_name) == False:
-        ent, exit, maze = gen_maze(20, 20, surrand=True, exit_mark="Q", entrance_mark="O")
+        ent, exit, maze = gen_maze(15, 15, surrand=True, exit_mark="Q", entrance_mark="O")
         new_map_file_name = get_new_map_file_name()
         if new_map_file_name == False:
             print("Too many map files, not saved")
@@ -47,7 +64,7 @@ def main():
     for line in maze:
         print(''.join(line))
 
-    solve_by_gpt_4(ent, maze, "Q", using_prev_tip=using_prev_tip)
+    solve_by_gpt(ent, maze, "Q", using_prev_tip=using_prev_tip)
     
     print(ent)
     print(exit)
@@ -72,12 +89,13 @@ def get_four_closet(maze, pos, exit_mark, natural=False, last_step_dir = ""):
     # 上 左 下 右
     ori = [maze[pos[0] - 1][pos[1]], maze[pos[0]][pos[1] - 1], maze[pos[0] + 1][pos[1]], maze[pos[0]][pos[1] + 1]]
     li = ["0" if x == " " else ("1" if x != exit_mark else exit_mark) for x in ori]
-    li_nat = ["pathway" if x == "0" else ("wall" if x != exit_mark else exit_mark) for x in li]
+    li_nat = ["way" if x == "0" else ("wall" if x != exit_mark else exit_mark) for x in li]
 
     res = "-".join(li)
 
     if natural:
         res = f"at this position, the up side is {li_nat[0]} {'(you came from there)' if last_step_dir == DIR_DOWN else ''}, the left side is {li_nat[1]}{'(you came from there)' if last_step_dir == DIR_RIGHT else ''}, the down side is {li_nat[2]}{'(you came from there)' if last_step_dir == DIR_UP else ''} and the right side is {li_nat[3]}{'(you came from there)' if last_step_dir == DIR_LEFT else ''}"
+        res = f"Now, up:{li_nat[0]} {'(you came from there)' if last_step_dir == DIR_DOWN else ''},left:{li_nat[1]}{'(you came from there)' if last_step_dir == DIR_RIGHT else ''}, down:{li_nat[2]}{'(you came from there)' if last_step_dir == DIR_UP else ''} , right: {li_nat[3]}{'(you came from there)' if last_step_dir == DIR_LEFT else ''}"
     return res
 
 def one_step_move(pos, dir):
@@ -90,7 +108,7 @@ def one_step_move(pos, dir):
     if dir == DIR_RIGHT:
         return (pos[0], pos[1] + 1)
 
-def solve_by_gpt_4(ent, maze, exit_mark, using_prev_tip):
+def solve_by_gpt(ent, maze, exit_mark, using_prev_tip):
     SYSTEM_NAME = "system"
     USER_NAME = "user"
     ASSISTANT_NAME = "assistant"
@@ -125,15 +143,18 @@ def solve_by_gpt_4(ent, maze, exit_mark, using_prev_tip):
     history_path = []
     history_path.append(current_pos)
     history_dirs = []
+    cost_dollar = 0
 
     while finish == False:
         resp_msg = ""
         try:
-            resp_msg = talk_gpt_4(messages=messages, use_4 = True)
+            resp_msg = talk_gpt(messages=messages, model_name=MODEL_4_8K)
         except Exception as e:
             print(f"err of {e}")
             continue
-        instruction = resp_msg[PARAM_CONTENT].lower()
+        instruction = resp_msg[0][PARAM_CONTENT].lower()
+        cost_dollar += resp_msg[1][1] + resp_msg[2][1]
+        this_time_token = resp_msg[1][0] + resp_msg[2][0]
 
         if instruction not in valid_cmd:
             print("instrucaion invalid: " + instruction)
@@ -162,7 +183,7 @@ def solve_by_gpt_4(ent, maze, exit_mark, using_prev_tip):
 
         maze_str = get_maze_str(maze, current_pos, history_indexes=history_path)
         os.system("clear")
-        print(instruction)
+        print(instruction + (" Now Cost: $%.2f, this round_token: %d" %(cost_dollar, this_time_token)))
         print(maze_str)
 
         if maze[new_pos[0]][new_pos[1]] == exit_mark:
@@ -171,7 +192,7 @@ def solve_by_gpt_4(ent, maze, exit_mark, using_prev_tip):
         else:
             four_closest = get_four_closet(maze, current_pos, exit_mark=exit_mark, natural=use_natural_feedback, last_step_dir= instruction if using_prev_tip else "")
             
-            messages.append(resp_msg)
+            messages.append(resp_msg[0])
             messages.append({PARAM_ROLE:USER_NAME, PARAM_CONTENT:four_closest})
             print(messages[-1])
             with open("logs/testlog.log", "w") as logfile:
@@ -179,15 +200,19 @@ def solve_by_gpt_4(ent, maze, exit_mark, using_prev_tip):
                 logfile.write(json.dumps(messages))
             # input("press to next")
 
-def talk_gpt_4(messages, use_4 = True):
+# returns (message, (prompt_token, prompt_cost), (completion_token, completion_cost))
+def talk_gpt(messages, model_name):
     completion = openai.ChatCompletion.create(
-        model="gpt-4-0314" if use_4 else "gpt-3.5-turbo-0301",
+        model=model_name,
         messages=messages,
         n = 1,
         temperature = 1,
         stream = False
     )
-    return completion.choices[0]["message"]
+    prompt_tokens = int(completion["usage"]["prompt_tokens"])
+    completion_tokens = int(completion["usage"]["completion_tokens"])
+    print("safe")
+    return (completion.choices[0]["message"], (prompt_tokens, prompt_tokens / 1000 * PRICING[model_name][PARAM_PROMPT]) ,(completion_tokens, completion_tokens / 1000 * PRICING[model_name][PARAM_COMP]))
 
 def get_new_map_file_name():
     for i in range(100):
