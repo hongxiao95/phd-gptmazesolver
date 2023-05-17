@@ -1,4 +1,4 @@
-import random
+import random, os
 
 DEFAULT_WALL = "█"
 DEFALUT_WAY = " "
@@ -38,11 +38,18 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = D
     # create ways
     # TODO: figure out how does nynx work
     def dfs(grid, y, x):
+        # make current position pathway at first
         grid[y][x] = path_way_mark
+
+        # define four directions move, represents going right, left, down and up
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        # make the choices random
         random.shuffle(directions)
         
+        # decide valid moves
         for dy, dx in directions:
+            # for each direction, the two-step-further should be still wall( not allowed to step into edge of the map or create a circle)
             ny, nx = y + dy * 2, x + dx * 2
             if valid_move(ny, nx) and grid[ny][nx] == wall_mark:
                 grid[y + dy][x + dx] = path_way_mark
@@ -50,7 +57,9 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = D
 
     # generate part
     def generate_maze(grid, entrance):
+
         start_y, start_x = entrance
+        # Because the entrance point is the only legal point on the side, so the first step must step into the map
         if start_y == 0:
             start_y += 1
         elif start_y == length - 1:
@@ -59,12 +68,17 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = D
             start_x += 1
         elif start_x == width - 1:
             start_x -= 1
+
+        # dfs from the legal point inside the map
         dfs(grid, start_y, start_x)
         return grid
     
     # create exit at last
     def create_exit(grid, entrance):
+        # Generate legal 4 - sides position list and their near-by in-map position.
         edge_cells = [((i, 0), (i, 1)) for i in range(1, length-1)] + [((i, width-1), (i, width-2)) for i in range(1, length-1)] + [((0, j), (1, j)) for j in range(1, width-1)] + [((length-1, j), (length-2, j)) for j in range(1, width-1)]
+
+        # valid_exit_cells meets the consitions of: at the edge of the map; not the entrance; near-by in-map position is pathway
         valid_exit_cells = [c for c in edge_cells if c != entrance and grid[c[1][0]][c[1][1]] == path_way_mark]
         exit_cell, adj_cell = random.choice(valid_exit_cells)
         grid[exit_cell[0]][exit_cell[1]] = exit_mark
@@ -75,9 +89,63 @@ def gen_maze(width: int, length: int, entrance: tuple = None, wall_mark: str = D
     grid = generate_maze(grid, entrance)
     exit_pos = create_exit(grid, entrance)
 
+    # if the map need to be surranded by walls
     if surrand:
         grid = [[wall_mark] * (width + 2)] + [[wall_mark] + row + [wall_mark] for row in grid] + [[wall_mark] * (width + 2)]
         entrance = (entrance[0] + 1, entrance[1] + 1)
         exit_pos = (exit_pos[0] + 1, exit_pos[1] + 1)
 
     return entrance, exit_pos, grid
+
+
+# maze file format:
+'''
+█ OX
+<maze>
+'''
+
+# writing maze to file
+def write_maze_to_file(maze_matrix:list, file_name:str, wall:str=DEFAULT_WALL, way:str=DEFALUT_WAY, ent:str=DEFAULT_ENT, exit:str=DEFAULT_EXIT):
+    try:
+        with open(file_name, "w") as maze_file:
+            maze_file.write(f"Legend={wall}{way}{ent}{exit}\n")
+            for line in maze_matrix:
+                file_name.write("".join(line) + "\n")
+            return True
+    except Exception as e:
+        print(f"Writting maze file fail. Reason: {e}")
+        return False
+
+
+# get maze from file
+# return: (True, msg, (wall, way, ent, exit), maze)
+def get_maze_from_file(file_name:str) -> tuple:
+    if os.path.exists(file_name) == False:
+        return (False, f"File <{file_name}> Not Exist.")
+    
+    with open(file_name, "r") as maze_file:
+        first_line = maze_file.readline().strip()
+        if first_line.startswith("Legend=") == False:
+            return (False, "File to get legend")
+        
+        legend_list = first_line.split("=")[1].strip()
+        if len(set(legend_list)) != 4:
+            return (False, f"Legend count illegal. legend:{legend_list}")
+        
+        maze = []
+        next_line = maze_file.readline().strip()
+        maze_width = len(next_line)
+        while next_line != "":
+            new_maze_width = len(next_line)
+            if new_maze_width != maze_width:
+                return (False, f"Unmached Size of maze, new_width:{new_maze_width}, old_width:{maze_width}")
+    
+            maze.append(next_line)
+            next_line = maze_file.readline().strip()
+
+        return (True, "success", tuple(legend_list), maze)
+    
+if __name__ == "__main__":
+    succ, msg, legneds, maze = get_maze_from_file("maps/map0.txt")
+    if succ == True:
+        print("\n".join(["".join(line) for line in maze]))

@@ -1,22 +1,23 @@
-MMMMMMMMMMMMMMMMMMMMMM
-MMMMMMMMMMMMMMMMMMMMMM
-MMMMMMMMMMMMMMMMMMMMMM
-MMM     M           MM
-MMM MMM M MMMMMMM M MM
-MMM M   M M       M MM
-MMM M MMM M MMMMMMM MM
-MMM M M   M M   M   QM
-MMM M M MMM MMM M MMMM
-MMM M   M   M   M M MM
-MMMMMMMMM MMM MMM M MM
-MMM   M   M M     M MM
-MMM M M MMM M MMMMM MM
-MMM M   M   M M     MM
-MMM MMMMM MMM M MMM MM
-MMM   M       M   M MM
-MMM M MMMMM MMMMMMM MM
-MMM M     M         MM
-MMM MMMMM MMMMMMMMM MM
-MMM     M M         MM
-MMMMMMMMMOMMMMMMMMMMMM
-MMMMMMMMMMMMMMMMMMMMMM
+Legend=█ OX
+██████████████████████
+██████████████████████
+██████████████████████
+███     █           ██
+███ ███ █ ███████ █ ██
+███ █   █ █       █ ██
+███ █ ███ █ ███████ ██
+███ █ █   █ █   █   X█
+███ █ █ ███ ███ █ ████
+███ █   █   █   █ █ ██
+█████████ ███ ███ █ ██
+███   █   █ █     █ ██
+███ █ █ ███ █ █████ ██
+███ █   █   █ █     ██
+███ █████ ███ █ ███ ██
+███   █       █   █ ██
+███ █ █████ ███████ ██
+███ █     █         ██
+███ █████ █████████ ██
+███     █ █         ██
+█████████O████████████
+██████████████████████

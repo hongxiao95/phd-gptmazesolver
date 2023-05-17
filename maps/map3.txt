@@ -1,22 +1,23 @@
-MMMMMMMMMMMMMMMMMMMMMM
-MMMMOMMMMMQMMMMMMMMMMM
-MM M     M         MMM
-MM MMMMM MMM MMMMM MMM
-MM     M     M     MMM
-MM MMMMMMMMMMM MMMMMMM
-MM           M     MMM
-MMMMMM MMMMMMMMMMM MMM
-MM     M       M   MMM
-MM MMMMM MMM MMM MMMMM
-MM M     M M   M   MMM
-MM M MMMMM MMM MMM MMM
-MM M M   M   M     MMM
-MM M M M MMM MMMMMMMMM
-MM M   M     M     MMM
-MM MMMMMMMMM M MMMMMMM
-MM   M     M M     MMM
-MM MMM M MMM MMMMM MMM
-MM     M           MMM
-MMMMMMMMMMMMMMMMMMMMMM
-MMMMMMMMMMMMMMMMMMMMMM
-MMMMMMMMMMMMMMMMMMMMMM
+Legned=█ OX
+██████████████████████
+████O█████X███████████
+██ █     █         ███
+██ █████ ███ █████ ███
+██     █     █     ███
+██ ███████████ ███████
+██           █     ███
+██████ ███████████ ███
+██     █       █   ███
+██ █████ ███ ███ █████
+██ █     █ █   █   ███
+██ █ █████ ███ ███ ███
+██ █ █   █   █     ███
+██ █ █ █ ███ █████████
+██ █   █     █     ███
+██ █████████ █ ███████
+██   █     █ █     ███
+██ ███ █ ███ █████ ███
+██     █           ███
+██████████████████████
+██████████████████████
+██████████████████████
