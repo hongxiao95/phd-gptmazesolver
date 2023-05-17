@@ -99,13 +99,13 @@ def get_four_closet(maze, pos, exit_mark, natural=False, last_step_dir = ""):
     # 上 左 下 右
     ori = [maze[pos[0] - 1][pos[1]], maze[pos[0]][pos[1] - 1], maze[pos[0] + 1][pos[1]], maze[pos[0]][pos[1] + 1]]
     li = ["0" if x == " " else ("1" if x != exit_mark else exit_mark) for x in ori]
-    li_nat = ["way" if x == "0" else ("wall" if x != exit_mark else exit_mark) for x in li]
+    li_nat = ["road" if x == "0" else ("wall" if x != exit_mark else exit_mark) for x in li]
 
     res = "-".join(li)
 
     if natural:
         res = f"at this position, the up side is {li_nat[0]} {'(you came from there)' if last_step_dir == DIR_DOWN else ''}, the left side is {li_nat[1]}{'(you came from there)' if last_step_dir == DIR_RIGHT else ''}, the down side is {li_nat[2]}{'(you came from there)' if last_step_dir == DIR_UP else ''} and the right side is {li_nat[3]}{'(you came from there)' if last_step_dir == DIR_LEFT else ''}"
-        res = f"Now, up:{li_nat[0]} {'(you came from there)' if last_step_dir == DIR_DOWN else ''},left:{li_nat[1]}{'(you came from there)' if last_step_dir == DIR_RIGHT else ''}, down:{li_nat[2]}{'(you came from there)' if last_step_dir == DIR_UP else ''} , right: {li_nat[3]}{'(you came from there)' if last_step_dir == DIR_LEFT else ''}"
+        res = f"Now, your up side:{li_nat[0]} {'(you came from there)' if last_step_dir == DIR_DOWN else ''},left side:{li_nat[1]}{'(you came from there)' if last_step_dir == DIR_RIGHT else ''}, down side:{li_nat[2]}{'(you came from there)' if last_step_dir == DIR_UP else ''} , right side: {li_nat[3]}{'(you came from there)' if last_step_dir == DIR_LEFT else ''}"
     return res
 
 def one_step_move(pos, dir):
@@ -118,7 +118,7 @@ def one_step_move(pos, dir):
     if dir == DIR_RIGHT:
         return (pos[0], pos[1] + 1)
 
-def solve_by_gpt(ent, maze, exit_mark, using_prev_tip):
+def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, self_cross_check=False, cross_check_model=MODEL_35_T):
     SYSTEM_NAME = "system"
     USER_NAME = "user"
     ASSISTANT_NAME = "assistant"
@@ -142,12 +142,15 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip):
         {PARAM_ROLE:SYSTEM_NAME, PARAM_CONTENT:start_prompt},
         {PARAM_ROLE:USER_NAME, PARAM_CONTENT:get_four_closet(maze, ent, exit_mark, use_natural_feedback)}
         ]
+    
+    gen_self_fixing_message = lambda sentence: [{PARAM_ROLE:USER_NAME, PARAM_CONTENT:f"Summarize this sentence to one-word-command of one of (up, down, left, right)  without explanation and punctuation: {sentence}"}]
 
     finish = False
 
     valid_cmd = {DIR_UP,DIR_DOWN,DIR_LEFT,DIR_RIGHT}
 
-    retry_times = 0
+    asking_retry_time = 0
+    MAX_ASKING_RETRY_TIME = 5
     bad_pos_retry = 0
     current_pos = [ent[0], ent[1]]
     history_path = []
@@ -166,16 +169,37 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip):
         cost_dollar += resp_msg[1][1] + resp_msg[2][1]
         this_time_token = resp_msg[1][0] + resp_msg[2][0]
 
+        if self_cross_check == True:
+            SELF_FIXING_RETRY_TIME = 5
+            fixing_time = 0
+
+            # if the command doesn't fit the format, using self_fix_model to fix it. max try 5 times. 
+            while instruction not in valid_cmd and fixing_time < SELF_FIXING_RETRY_TIME:
+                fixing_time += 1
+                print(f"Cmd illegal, try self-check and fixing....")
+                fixing_msg = gen_self_fixing_message(instruction)
+                # TODO to use GPT3.5 to correct command
+                fix_resp = ""
+                try:
+                    fix_resp = talk_gpt(messages=fixing_msg, model_name=cross_check_model)
+                except Exception as e:
+                    print(f"error while try self_fixing. Exception of {e}")
+                    continue
+                instruction = fix_resp[0][PARAM_CONTENT].lower()
+                cost_dollar += fix_resp[1][1] + fix_resp[2][1]
+                this_time_token += fix_resp[1][0] + fix_resp[2][0]
+
+        # after possible self_fixing, if still invalid, reasking for at most <MAX_ASKING_RETRY_TIME> times.
         if instruction not in valid_cmd:
             print("instrucaion invalid: " + instruction)
-            if retry_times > 5:
-                print("Too many retry")
+            if asking_retry_time > MAX_ASKING_RETRY_TIME:
+                print(f"Too many asking retry, allowed max {MAX_ASKING_RETRY_TIME} times")
                 break
-            retry_times += 1
+            asking_retry_time += 1
             continue
         else:
-            retry_times = 0
-
+            asking_retry_time = 0
+                    
         new_pos = one_step_move(current_pos, instruction)
         if maze[new_pos[0]][new_pos[1]] != " " and maze[new_pos[0]][new_pos[1]] != exit_mark:
             if bad_pos_retry > 5:
