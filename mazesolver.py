@@ -1,7 +1,8 @@
-from maze_generator import gen_maze
+from maze_generator import gen_maze, write_maze_to_file, get_maze_from_file
+import maze_generator
 import openai
 import os
-import json, math
+import json, mazeutil
 
 
 DIR_UP = "up"
@@ -26,48 +27,57 @@ PRICING = {
     }
 }
 
+using_wall_mark = maze_generator.DEFAULT_WALL
+using_way_mark = maze_generator.DEFALUT_WAY
+using_ent_mark = maze_generator.DEFAULT_ENT
+using_exit_mark = maze_generator.DEFAULT_EXIT
+
 def main():
-    exit_mark = "Q"
-    ent_mark = "O"
     map_file_name = input("input map file name in [maps], leave blank and gen new map: ")
     ent, exit, maze = (0,0,0)
     using_prev_tip = True if input("Using Pre-Step-Tips to improve efficent?(y/n)").strip().lower() == "y" else False
+
+    # Get map from generator or file
     if map_file_name.strip() == "" or os.path.exists("maps" + os.path.sep + map_file_name) == False:
-        ent, exit, maze = gen_maze(15, 15, surrand=True, exit_mark="Q", entrance_mark="O")
+        ent, exit, maze = gen_maze(15, 15, surrand=True, wall_mark=using_wall_mark, path_way_mark=using_way_mark, entrance_mark=using_ent_mark, exit_mark=using_exit_mark)
         new_map_file_name = get_new_map_file_name()
         if new_map_file_name == False:
             print("Too many map files, not saved")
         else:
-            with open(new_map_file_name, "w") as new_map_file:
-                for line in maze:
-                    new_map_file.write("".join(line) + "\n")
-            print("New Map Saved as " + new_map_file_name)
+            writting_res = write_maze_to_file(maze, file_name=new_map_file_name)
+            if writting_res == True:
+                print("New Map Saved as " + new_map_file_name)
+            else:
+                print("Writting new map failed")
     else:
         map_file_name = "maps" + os.path.sep + map_file_name
         print("reading from " + map_file_name)
-        ent, exit, maze = read_map(map_file_name, ent_mark, exit_mark)
-        input("Reading Finished")
-    api_key = None
-    if os.path.exists("proj_config/api_key.conf") == False:
-        print("No API-key File!")
-        return
-
-    with open("proj_config/api_key.conf") as api_key_file:
-        api_key = api_key_file.readline().strip()
-        if api_key == "":
-            print("API-KEY is Empty!")
+        success, msg, legend, ent, maze = get_maze_from_file(map_file_name)
+        using_wall_mark, using_way_mark, using_ent_mark, using_exit_mark = legend
+        if success == True:
+            input("Reading Finished")
+            print(maze)
+        else:
+            print(f"Reading Maze File Failed: {msg}")
             return
+        
+    # read api_key from config file
+    api_key = None
+    success, msg = mazeutil.get_api_key()
+    if success == False:
+        print(f"Fail to get API Key! reason:{msg}")
+    api_key = msg
     
     openai.api_key = api_key
+    # deprecated: print all the avaliable models about gpt
     # print([x["id"] if "gpt" in x["id"] else 0 for x in openai.Model.list()["data"]])
 
     for line in maze:
         print(''.join(line))
 
-    solve_by_gpt(ent, maze, "Q", using_prev_tip=using_prev_tip)
+    solve_by_gpt(ent, maze, using_exit_mark, using_prev_tip=using_prev_tip)
     
-    print(ent)
-    print(exit)
+    print(f"Finished from {ent} to {exit}")
 
 def get_maze_str(maze, current_pos, history_indexes):
     his_mark = "●"
@@ -195,7 +205,7 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip):
             messages.append(resp_msg[0])
             messages.append({PARAM_ROLE:USER_NAME, PARAM_CONTENT:four_closest})
             print(messages[-1])
-            with open("logs/testlog.log", "w") as logfile:
+            with open("logs/testlog.log", "w+") as logfile:
                 logfile.write(maze_str)
                 logfile.write(json.dumps(messages))
             # input("press to next")

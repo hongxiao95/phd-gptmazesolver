@@ -118,12 +118,13 @@ def write_maze_to_file(maze_matrix:list, file_name:str, wall:str=DEFAULT_WALL, w
 
 
 # get maze from file
-# return: (True, msg, (wall, way, ent, exit), maze)
+# return: (True, msg, (wallmark, waymark, entmark, exitmark), ent_pos, maze)
 def get_maze_from_file(file_name:str) -> tuple:
     if os.path.exists(file_name) == False:
         return (False, f"File <{file_name}> Not Exist.")
     
     with open(file_name, "r") as maze_file:
+        ent = (0,0)
         first_line = maze_file.readline().strip()
         if first_line.startswith("Legend=") == False:
             return (False, "File to get legend")
@@ -140,10 +141,22 @@ def get_maze_from_file(file_name:str) -> tuple:
             if new_maze_width != maze_width:
                 return (False, f"Unmached Size of maze, new_width:{new_maze_width}, old_width:{maze_width}")
     
-            maze.append(next_line)
+            maze.append(list(next_line))
             next_line = maze_file.readline().strip()
 
-        return (True, "success", tuple(legend_list), maze)
+        legend_list = tuple(legend_list)
+
+        found_ent = False
+        for y in range(len(maze)):
+            for x in range(len(y)):
+                if maze[y][x] == legend_list[2]:
+                    ent = (y,x)
+                    break
+            if found_ent == True:
+                break
+
+
+        return (True, "success", tuple(legend_list), ent, maze)
     
 if __name__ == "__main__":
     succ, msg, legneds, maze = get_maze_from_file("maps/map0.txt")
