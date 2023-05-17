@@ -36,6 +36,9 @@ def main():
     map_file_name = input("input map file name in [maps], leave blank and gen new map: ")
     ent, exit, maze = (0,0,0)
     using_prev_tip = True if input("Using Pre-Step-Tips to improve efficent?(y/n)").strip().lower() == "y" else False
+    using_self_fix_check = True if input("Using Self-Fix-Check to improve efficent?(y/n)").strip().lower() == "y" else False
+    using_main_model = MODEL_4_8K if input("Using GPT-4 instead of GPT3.5-turbo as main model?(y/n)").strip().lower() == "y" else MODEL_35_T
+
 
     # Get map from generator or file
     if map_file_name.strip() == "" or os.path.exists("maps" + os.path.sep + map_file_name) == False:
@@ -75,7 +78,7 @@ def main():
     for line in maze:
         print(''.join(line))
 
-    solve_by_gpt(ent, maze, using_exit_mark, using_prev_tip=using_prev_tip)
+    solve_by_gpt(ent, maze, using_exit_mark, using_prev_tip=using_prev_tip, model=using_main_model, use_self_fix_check=using_self_fix_check)
     
     print(f"Finished from {ent} to {exit}")
 
@@ -118,7 +121,7 @@ def one_step_move(pos, dir):
     if dir == DIR_RIGHT:
         return (pos[0], pos[1] + 1)
 
-def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, self_cross_check=False, cross_check_model=MODEL_35_T):
+def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, use_self_fix_check=False, cross_check_model=MODEL_35_T):
     SYSTEM_NAME = "system"
     USER_NAME = "user"
     ASSISTANT_NAME = "assistant"
@@ -161,7 +164,7 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, self_cr
     while finish == False:
         resp_msg = ""
         try:
-            resp_msg = talk_gpt(messages=messages, model_name=MODEL_4_8K)
+            resp_msg = talk_gpt(messages=messages, model_name=model)
         except Exception as e:
             print(f"err of {e}")
             continue
@@ -169,7 +172,7 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, self_cr
         cost_dollar += resp_msg[1][1] + resp_msg[2][1]
         this_time_token = resp_msg[1][0] + resp_msg[2][0]
 
-        if self_cross_check == True:
+        if use_self_fix_check == True:
             SELF_FIXING_RETRY_TIME = 5
             fixing_time = 0
 
