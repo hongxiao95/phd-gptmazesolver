@@ -34,7 +34,7 @@ def main():
     using_way_mark = maze_generator.DEFALUT_WAY
     using_ent_mark = maze_generator.DEFAULT_ENT
     using_exit_mark = maze_generator.DEFAULT_EXIT
-    
+
     map_file_name = input("input map file name in [maps], leave blank and gen new map: ")
     ent, exit, maze = (0,0,0)
     using_prev_tip = True if input("Using Pre-Step-Tips to improve efficent?(y/n)").strip().lower() == "y" else False
@@ -99,18 +99,20 @@ def get_maze_str(maze, current_pos, history_indexes):
             cache_str += item
         cache_str += "\n"
     return cache_str
-def get_four_closet(maze, pos, exit_mark, natural=False, last_step_dir = ""):
+def get_four_closet(maze, pos, exit_mark, natural=False, last_step_dir = "", need_straight = False):
 
     # 上 左 下 右
     ori = [maze[pos[0] - 1][pos[1]], maze[pos[0]][pos[1] - 1], maze[pos[0] + 1][pos[1]], maze[pos[0]][pos[1] + 1]]
     li = ["0" if x == " " else ("1" if x != exit_mark else exit_mark) for x in ori]
     li_nat = ["road" if x == "0" else ("wall" if x != exit_mark else exit_mark) for x in li]
+    if need_straight:
+        li_nat = [x + f"{', do not step in ' if x=='wall' else ', you can step in'}" for x in li_nat]
 
     res = "-".join(li)
 
     if natural:
         res = f"at this position, the up side is {li_nat[0]} {'(you came from there)' if last_step_dir == DIR_DOWN else ''}, the left side is {li_nat[1]}{'(you came from there)' if last_step_dir == DIR_RIGHT else ''}, the down side is {li_nat[2]}{'(you came from there)' if last_step_dir == DIR_UP else ''} and the right side is {li_nat[3]}{'(you came from there)' if last_step_dir == DIR_LEFT else ''}"
-        res = f"Now, your up side:{li_nat[0]} {'(you came from there)' if last_step_dir == DIR_DOWN else ''},left side:{li_nat[1]}{'(you came from there)' if last_step_dir == DIR_RIGHT else ''}, down side:{li_nat[2]}{'(you came from there)' if last_step_dir == DIR_UP else ''} , right side: {li_nat[3]}{'(you came from there)' if last_step_dir == DIR_LEFT else ''}"
+        res = f"Now, your up side:{li_nat[0]} {'(you came from there)' if last_step_dir == DIR_DOWN else ''}; left side:{li_nat[1]}{'(you came from there)' if last_step_dir == DIR_RIGHT else ''}; down side:{li_nat[2]}{'(you came from there)' if last_step_dir == DIR_UP else ''}; right side: {li_nat[3]}{'(you came from there)' if last_step_dir == DIR_LEFT else ''}"
     return res
 
 def one_step_move(pos, dir):
@@ -145,7 +147,7 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, use_sel
 
     messages = [
         {PARAM_ROLE:SYSTEM_NAME, PARAM_CONTENT:start_prompt},
-        {PARAM_ROLE:USER_NAME, PARAM_CONTENT:get_four_closet(maze, ent, exit_mark, use_natural_feedback)}
+        {PARAM_ROLE:USER_NAME, PARAM_CONTENT:get_four_closet(maze, ent, exit_mark, use_natural_feedback, need_straight=model==MODEL_35_T)}
         ]
     
     gen_self_fixing_message = lambda sentence: [{PARAM_ROLE:USER_NAME, PARAM_CONTENT:f"Summarize this sentence to one-word-command of one of (up, down, left, right)  without explanation and punctuation: {sentence}"}]
@@ -231,7 +233,7 @@ def solve_by_gpt(ent, maze, exit_mark, using_prev_tip, model=MODEL_4_8K, use_sel
             finish = True
             continue  
         else:
-            four_closest = get_four_closet(maze, current_pos, exit_mark=exit_mark, natural=use_natural_feedback, last_step_dir= instruction if using_prev_tip else "")
+            four_closest = get_four_closet(maze, current_pos, exit_mark=exit_mark, natural=use_natural_feedback, last_step_dir= instruction if using_prev_tip else "", need_straight=model==MODEL_35_T)
             
             messages.append(resp_msg[0])
             messages.append({PARAM_ROLE:USER_NAME, PARAM_CONTENT:four_closest})
